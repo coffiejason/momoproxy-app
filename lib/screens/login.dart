@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:momoproxy/screens/signup.dart';
 import 'package:momoproxy/widgets/custom_checkbox.dart';
-import 'package:momoproxy/widgets/primary_button.dart';
 import 'package:momoproxy/theme.dart';
-import 'dart:async';
+
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -36,76 +38,76 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
-  // void httpLogin() {
-  //   setState(() async {
-  //     String email = emailController.text;
-  //     String password = passwordController.text;
-  //     SharedPreferences prefs = await SharedPreferences.getInstance();
+  void httpLogin() async {
+    String email = emailController.text;
+    String password = passwordController.text;
+    SharedPreferences prefs = await SharedPreferences.getInstance();
 
-  //     try {
-  //       var url = Uri.parse('http://momoproxy.herokuapp.com/login');
-  //       var response = await http
-  //           .post(url, body: {'email': '$email', 'password': '$password'});
+    try {
+      var response = await http.get(Uri.parse(
+          'http://momoproxy.herokuapp.com/user_login/$email/$password'));
 
-  //       print('Response body: ${response.body}');
+      print('Response body: ${response.body}');
 
-  //       var jsonData = jsonDecode(response.body);
+      var jsonData = jsonDecode(response.body);
 
-  //       if (jsonData['icsid'] != null) {
-  //         prefs.setString('vid', jsonData['icsid']);
+      if (jsonData['id'] != null) {
+        prefs.setString('userid', jsonData['id']);
+        prefs.setString('name', jsonData['name']);
+        prefs.setString('phone', jsonData['phone']);
+        prefs.setString('email', jsonData['email']);
 
-  //         Navigator.pushReplacementNamed(context, '/findvendor');
-  //       } else {
-  //         Fluttertoast.showToast(
-  //             msg: "An error occurred",
-  //             toastLength: Toast.LENGTH_SHORT,
-  //             gravity: ToastGravity.CENTER,
-  //             timeInSecForIosWeb: 1,
-  //             backgroundColor: Colors.red[500],
-  //             textColor: Colors.white,
-  //             fontSize: 16.0);
-  //       }
-  //     } on Exception catch (e) {
-  //       Fluttertoast.showToast(
-  //           msg: "An error occurred",
-  //           toastLength: Toast.LENGTH_SHORT,
-  //           gravity: ToastGravity.CENTER,
-  //           timeInSecForIosWeb: 1,
-  //           backgroundColor: Colors.green[500],
-  //           textColor: Colors.white,
-  //           fontSize: 16.0);
-  //     }
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        Fluttertoast.showToast(
+            msg: "Wrong email and password combination",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.CENTER,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.red[500],
+            textColor: Colors.white,
+            fontSize: 16.0);
+      }
+    } on Exception catch (e) {
+      Fluttertoast.showToast(
+          msg: "Internal serve error",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.amber[500],
+          textColor: Colors.white,
+          fontSize: 16.0);
+    }
 
-  //     // Fluttertoast.showToast(
-  //     //     msg: "Logging in",
-  //     //     toastLength: Toast.LENGTH_SHORT,
-  //     //     gravity: ToastGravity.CENTER,
-  //     //     timeInSecForIosWeb: 1,
-  //     //     backgroundColor: Colors.green,
-  //     //     textColor: Colors.white,
-  //     //     fontSize: 16.0);
-  //   });
-  // }
+    // Fluttertoast.showToast(
+    //     msg: "Logging in",
+    //     toastLength: Toast.LENGTH_SHORT,
+    //     gravity: ToastGravity.CENTER,
+    //     timeInSecForIosWeb: 1,
+    //     backgroundColor: Colors.green,
+    //     textColor: Colors.white,
+    //     fontSize: 16.0);
+  }
 
-  // void autoLogin() async {
-  //   SharedPreferences prefs = await SharedPreferences.getInstance();
+  void autoLogin() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
 
-  //   String vid = prefs.getString("vid").toString();
+    String userid = prefs.getString("userid").toString();
 
-  //   print(vid);
+    print(userid);
 
-  //   // if (vid != null || vid != '') {
-  //   //   Navigator.pushReplacementNamed(context, '/findvendor');
-  //   // }
-  // }
+    if (userid != "null" && userid != "") {
+      Navigator.pushReplacementNamed(context, '/home');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    //autoLogin();
+    autoLogin();
 
     return Scaffold(
       backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -209,8 +211,19 @@ class _LoginPageState extends State<LoginPage> {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
-                        //httpLogin();
-                        Navigator.pushReplacementNamed(context, "/home");
+                        if (emailController.text.isNotEmpty &&
+                            passwordController.text.isNotEmpty) {
+                          httpLogin();
+                        } else {
+                          Fluttertoast.showToast(
+                              msg: "Fill up all fields",
+                              toastLength: Toast.LENGTH_SHORT,
+                              gravity: ToastGravity.CENTER,
+                              timeInSecForIosWeb: 1,
+                              backgroundColor: Colors.amber[500],
+                              textColor: Colors.white,
+                              fontSize: 16.0);
+                        }
                       },
                       borderRadius: BorderRadius.circular(14.0),
                       child: Center(

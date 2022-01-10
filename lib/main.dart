@@ -2,8 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:momoproxy/screens/login.dart';
 import 'package:momoproxy/screens/home.dart';
 import 'package:momoproxy/screens/getvendor.dart';
+import 'package:momoproxy/screens/customer_profile.dart';
+import 'package:momoproxy/screens/onboard.dart';
+import 'package:momoproxy/screens/intro.dart';
 
-void main() {
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
@@ -18,12 +28,15 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
-        initialRoute: "/login",
+        initialRoute: "/intro",
         debugShowCheckedModeBanner: false,
         routes: <String, WidgetBuilder>{
           "/login": (BuildContext context) => new LoginPage(),
           "/home": (BuildContext context) => new HomeScreen(),
+          "/onboard": (BuildContext context) => new OnboardScreen(),
+          "/intro": (BuildContext context) => new IntroScreen(),
           "/getVendor": (BuildContext context) => new GetVendorScreen(),
+          "/customerprofile": (BuildContext context) => new VendorProfile(),
         });
   }
 }

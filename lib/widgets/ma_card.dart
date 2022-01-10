@@ -4,12 +4,22 @@ import 'dart:core';
 
 import 'package:flutter/material.dart';
 import 'vendor.dart';
+import 'vendor2.dart';
+import 'package:geolocator/geolocator.dart';
 // import 'package:maps_launcher/maps_launcher.dart';
 // import 'package:intl/intl.dart';
 
 class MomoAgent extends StatelessWidget {
   final Vendor vendor;
-  MomoAgent({required this.vendor});
+  final bool clickable;
+  final double lat;
+  final double lng;
+
+  MomoAgent(
+      {required this.vendor,
+      required this.clickable,
+      required this.lat,
+      required this.lng});
 
   bool isAgent = true;
 
@@ -52,12 +62,28 @@ class MomoAgent extends StatelessWidget {
     return icon;
   }
 
+  int getDist(
+      double userlat, double userlng, double targetlat, double targetlng) {
+    return Geolocator.distanceBetween(userlat, userlng, targetlat, targetlng)
+        .round();
+  }
+
   @override
   Widget build(BuildContext context) {
     return new GestureDetector(
       onTap: () {
-        //Navigator.pushNamed(context, "/customerprofile", arguments: vendor);
-        //print('${timeDifference(ftdate, vendor.time)}');
+        String dist =
+            '${getDist(this.lat, this.lng, double.parse(vendor.lat), double.parse(vendor.lng)).toString()} meters away';
+        Vendor2 vendor2 = Vendor2(
+            name: vendor.name,
+            phone: vendor.phone,
+            isAgent: vendor.isAgent,
+            lat: vendor.lat,
+            lng: vendor.lng,
+            distance: dist);
+        if (clickable) {
+          Navigator.pushNamed(context, "/customerprofile", arguments: vendor2);
+        }
       },
       child: Padding(
         padding: const EdgeInsets.only(top: 8),
@@ -68,7 +94,8 @@ class MomoAgent extends StatelessWidget {
                 child: Icon(Icons.store_rounded),
               ),
               title: Text('${vendor.name}'),
-              subtitle: Text('Close: 10 meters away'),
+              subtitle: Text(
+                  '${getDist(this.lat, this.lng, double.parse(vendor.lat), double.parse(vendor.lng))} meters away'),
               trailing: new GestureDetector(
                 onTap: () {
                   // MapsLauncher.launchCoordinates(

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:momoproxy/theme.dart';
 import 'package:momoproxy/widgets/vendor.dart';
+import 'package:momoproxy/widgets/vendor2.dart';
 import 'package:momoproxy/widgets/vendor_card.dart';
 import 'package:momoproxy/widgets/ma_card.dart';
 import 'package:geolocator/geolocator.dart';
@@ -13,12 +14,29 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:async/async.dart';
 
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
+}
+
+void updateToken() async {
+  FirebaseMessaging firebaseMessaging = FirebaseMessaging.instance;
+
+  String? newToken = await firebaseMessaging.getToken();
+
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  String userid = prefs.getString('userid').toString();
+
+  await http.get(Uri.parse(
+      'https://momoproxy.herokuapp.com/updateuserToken/$userid/$newToken'));
 }
 
 class _HomeScreenState extends State<HomeScreen> {
@@ -31,6 +49,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _amountLabel = "How much do you want to Deposit ?";
 
+  String profile_name = "John Kofi Doe";
+  String profile_email = "JohnKofiDoe@mail.com";
+  String profile_phone = "0000000000";
+  String profile_id = "";
+
+  double lat = 0.00;
+  double lng = 0.00;
+
   final List<String> titles = [
     "Post a Transaction",
     "Nearby Vendors",
@@ -39,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   TextEditingController amountController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
+  String walletType = "MTN MoMo";
 
   late Future<List<Vendor>> futureData;
 
@@ -85,15 +112,19 @@ class _HomeScreenState extends State<HomeScreen> {
         desiredAccuracy: LocationAccuracy.high);
   }
 
-  Future<List<Vendor>> fetchData() async {
-    // var location = await _determinePosition();
-    // var lat = location.latitude;
-    // var lng = location.longitude;
+  void getLocation() async {
+    var location = await _determinePosition();
+    lat = location.latitude;
+    lng = location.longitude;
 
-    return this._memoizer.runOnce(() async {
+    print('my coordinates: ${lat} ${lng}');
+  }
+
+  Future<List<Vendor>> fetchData() async {
+    return _memoizer.runOnce(() async {
       try {
-        const String url =
-            "https://momoproxy.herokuapp.com/getcustomers_v2/0.0000/0.00000";
+        String url =
+            "http://momoproxy.herokuapp.com/nearestvendors/null/${lat}/${lng}";
 
         final response = await http.get(Uri.parse(url));
 
@@ -116,46 +147,10 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void fetchData2() async {
-    // var location = await _determinePosition();
-    // var lat = location.latitude;
-    // var lng = location.longitude;
-
-    Future<dynamic> memvalue = _memoizer.runOnce(() async {
-      try {
-        const String url =
-            "https://momoproxy.herokuapp.com/getcustomers_v2/0.0000/0.00000";
-
-        final response = await http.get(Uri.parse(url));
-
-        if (response.statusCode == 200) {
-          List jsonResponse = json.decode(response.body);
-
-          print("got data 2");
-
-          List<Vendor> vendorList = jsonResponse
-              .map((vendorData) => new Vendor.fromJson(vendorData))
-              .toList();
-
-          return vendorList;
-        } else {
-          throw Exception('Unexpected error occurred');
-        }
-      } on Exception catch (e) {
-        throw Exception('Unexpected error occurred');
-      }
-    }) as Future<List<Vendor>>;
-
-    print(memvalue);
-
-    //return memvalue as Future<List<Vendor>>;
-  }
-
   @override
   void initState() {
     super.initState();
-    // fetchData().then((value) =>
-    //     setState(() => {print(value), vendors = value, _loading = false}));
+    getLocation();
   }
 
   String getType(bool switchValue) {
@@ -168,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void postTransaction() async {
+  void postTransaction(context) async {
     var location = await _determinePosition();
     var lat = location.latitude;
     var lng = location.longitude;
@@ -177,8 +172,12 @@ class _HomeScreenState extends State<HomeScreen> {
     String phone = phoneController.text;
     String type = getType(_switchValue);
 
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    String userid = prefs.getString('userid').toString();
+
     final response = await http.get(Uri.parse(
-        'https://momoproxy.herokuapp.com/request_transaction_v2/$type/$phone/$amount/$lat/$lng'));
+        'https://momoproxy.herokuapp.com/request_transaction_v2/$userid/$type/$phone/$amount/$lat/$lng'));
 
     if (response.statusCode == 200) {
       Fluttertoast.showToast(
@@ -189,9 +188,51 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: Colors.green[500],
           textColor: Colors.white,
           fontSize: 16.0);
+
+      Map<String, dynamic> res = json.decode(response.body);
+      String tid = res['id'];
+      prefs.setString("transactionid", tid);
+
+      Navigator.pushNamed(context, "/getVendor", arguments: tid);
     } else {
       throw Exception('Unexpected error occurred');
     }
+  }
+
+  void savetransaction(
+      bool data, String amount, String phone, String operator) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    prefs.setBool('haspending', data);
+    ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+  }
+
+  void hasPending(context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    bool result = prefs.getBool('haspending') as bool;
+
+    if (result) {
+      showBanner(context);
+    }
+  }
+
+  void loadProfile() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    profile_name = prefs.getString('name').toString();
+    profile_email = prefs.getString('email').toString();
+    profile_phone = prefs.getString('phone').toString();
+    profile_id = prefs.getString('userid').toString();
+  }
+
+  void logout(context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.remove('name');
+    prefs.remove('email');
+    prefs.remove('phone');
+    prefs.remove('userid');
+
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   Widget setUpButtonChild() {
@@ -228,16 +269,85 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void showBanner(context) {
+    ScaffoldMessenger.of(context).showMaterialBanner(
+      MaterialBanner(
+        //padding: EdgeInsets.all(5),
+        content: Text(
+          "Open transaction . . .",
+          style: TextStyle(fontSize: 17),
+        ),
+        leading: Transform.scale(
+          scale: 0.5,
+          child: CircularProgressIndicator(),
+        ),
+        backgroundColor: Colors.yellow,
+        actions: [
+          TextButton(
+              child: const Text('Open'),
+              onPressed: () {
+                Navigator.pushNamed(context, '/getVendor');
+                ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+              }),
+          // TextButton(
+          //   child: const Text('Dismiss'),
+          //   onPressed: () =>
+          //       ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
+          // ),
+        ],
+      ),
+    );
+  }
+
+  void getAssignedVendor(context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    String transactionid = prefs.getString("transactionid").toString();
+
+    final response = await http.get(Uri.parse(
+        'https://momoproxy.herokuapp.com/get_assigned_vendor/$transactionid'));
+
+    if (response.statusCode == 200) {
+      dynamic vendorJson = jsonDecode(response.body);
+
+      Vendor2 vendor = new Vendor2.singlefromJson(vendorJson);
+
+      Navigator.pushNamed(context, '/customerprofile', arguments: vendor);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Future<void> refreshData() {
-      setState(() {});
+      setState(() {
+        getLocation();
+      });
       return fetchData();
     }
 
     setState(() {
+      getLocation();
       futureData = fetchData();
     });
+
+    FirebaseMessaging.onMessage.listen((data) {
+      //checkNotifications(context);
+      Fluttertoast.showToast(
+          msg: "found you an e-vendor",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.green[500],
+          textColor: Colors.white,
+          fontSize: 16.0);
+
+      getAssignedVendor(context);
+    });
+
+    //hasPending(context);
+    loadProfile();
+
+    updateToken();
 
     final tabs = [
       SafeArea(
@@ -254,7 +364,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 200,
                 ),
                 SizedBox(
-                  width: 20,
+                  width: 10,
+                ),
+                DropdownButton<String>(
+                  value: walletType,
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      walletType = newValue!;
+
+                      print('wallettype: ${walletType}');
+                    });
+                  },
+                  items: <String>["MTN MoMo", "VF Cash", "AirtelTigo Money"]
+                      .map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                        value: value, child: Text(value));
+                  }).toList(),
+                ),
+                SizedBox(
+                  width: 10,
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -420,13 +548,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 MaterialButton(
                   child: setUpButtonChild(),
                   onPressed: () {
-                    setState(() {
-                      if (_state == 0) {
-                        animateButton();
-                      }
-                    });
+                    showBanner(context);
 
-                    postTransaction();
+                    if (amountController.text.isNotEmpty &&
+                        phoneController.text.isNotEmpty) {
+                      setState(() {
+                        if (_state == 0) {
+                          animateButton();
+                        }
+                      });
+                      // savetransaction(true, amountController.text,
+                      //     phoneController.text, "Vodaphone");
+
+                      postTransaction(context);
+                    } else {
+                      Fluttertoast.showToast(
+                          msg: "Fill up all fields",
+                          toastLength: Toast.LENGTH_SHORT,
+                          gravity: ToastGravity.CENTER,
+                          timeInSecForIosWeb: 1,
+                          backgroundColor: Colors.amber[500],
+                          textColor: Colors.white,
+                          fontSize: 16.0);
+                    }
                   },
                   elevation: 4.0,
                   minWidth: double.infinity,
@@ -450,7 +594,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: ListView.builder(
                         itemCount: vendor?.length,
                         itemBuilder: (BuildContext context, int index) {
-                          return VendorCard(vendor: vendor![index]);
+                          if (vendor![index].isAgent) {
+                            return MomoAgent(
+                              vendor: vendor[index],
+                              clickable: true,
+                              lat: lat,
+                              lng: lng,
+                            );
+                          } else {
+                            return VendorCard(
+                              vendor: vendor[index],
+                              clickable: false,
+                              lat: lat,
+                              lng: lng,
+                            );
+                          }
                         }),
                   );
                 } else if (snapshot.hasError) {
@@ -465,26 +623,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
-                  children: const [
+                  children: [
                     CircleAvatar(
                       foregroundImage: AssetImage("assets/images/artwork.png"),
                       radius: 50,
                     ),
                     SizedBox(height: 10),
                     Text(
-                      "John Kofi Doe",
+                      profile_name,
                       style: TextStyle(fontSize: 17),
                     ),
                     SizedBox(height: 10),
                     Text(
-                      "JohnKofiDoe@email.com",
+                      profile_email,
                       style: TextStyle(fontSize: 17),
                     ),
                     SizedBox(height: 10),
                     Text(
-                      "02400000000",
+                      profile_phone,
                       style: TextStyle(fontSize: 17),
                     ),
+                    SizedBox(height: 30),
+                    TextButton(
+                        onPressed: () {
+                          logout(context);
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [Icon(Icons.logout), Text("Logout")],
+                        ))
                   ],
                 ))),
       ),

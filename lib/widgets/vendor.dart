@@ -29,7 +29,14 @@ class Vendor {
       required this.lng});
 
   factory Vendor.fromJson(Map<String, dynamic> json) => Vendor(
-      name: json['location'],
+      name: json['name'],
+      phone: json['phone'],
+      isAgent: json['isAgent'],
+      lat: json['lat'],
+      lng: json['lng']);
+
+  factory Vendor.singlefromJson(dynamic json) => Vendor(
+      name: json['name'],
       phone: json['phone'],
       isAgent: json['isAgent'],
       lat: json['lat'],
