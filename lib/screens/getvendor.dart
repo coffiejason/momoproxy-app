@@ -77,30 +77,32 @@ class _GetVendorScreenState extends State<GetVendorScreen> {
     // var lat = location.latitude;
     // var lng = location.longitude;
 
-    return _memoizer.runOnce(() async {
-      try {
-        String url =
-            "http://momoproxy.herokuapp.com/nearestvendors/${tid}/${lat}/${lng}";
+    // return _memoizer.runOnce(() async {
 
-        final response = await http.get(Uri.parse(url));
+    // });
 
-        print("got data");
+    try {
+      String url =
+          "http://momoproxy.herokuapp.com/nearestvendors/${tid}/${lat}/${lng}";
 
-        if (response.statusCode == 200) {
-          List jsonResponse = json.decode(response.body);
+      final response = await http.get(Uri.parse(url));
 
-          List<Vendor> vendorList = jsonResponse
-              .map((vendorData) => new Vendor.fromJson(vendorData))
-              .toList();
+      print("got data");
 
-          return vendorList;
-        } else {
-          throw Exception('Unexpected error occurred');
-        }
-      } on Exception catch (e) {
+      if (response.statusCode == 200) {
+        List jsonResponse = json.decode(response.body);
+
+        List<Vendor> vendorList = jsonResponse
+            .map((vendorData) => new Vendor.fromJson(vendorData))
+            .toList();
+
+        return vendorList;
+      } else {
         throw Exception('Unexpected error occurred');
       }
-    });
+    } on Exception catch (e) {
+      throw Exception('Unexpected error occurred');
+    }
   }
 
   void savetransaction(
@@ -127,53 +129,91 @@ class _GetVendorScreenState extends State<GetVendorScreen> {
       futureData = fetchData(tid);
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        iconTheme: IconThemeData(color: Colors.grey),
-        title: Text(
-          "Vendors Nearby",
-          style: TextStyle(
-            color: Colors.grey,
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Scaffold(
+        appBar: AppBar(
+          iconTheme: IconThemeData(color: Colors.grey),
+          title: Text(
+            "Vendors Nearby",
+            style: TextStyle(
+              color: Colors.grey,
+            ),
           ),
+          centerTitle: true,
+          shadowColor: Colors.transparent,
+          backgroundColor: Colors.transparent,
         ),
-        centerTitle: true,
-        shadowColor: Colors.transparent,
-        backgroundColor: Colors.transparent,
-      ),
-      body: Center(
-          child: FutureBuilder<List<Vendor>>(
-              future: futureData,
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  List<Vendor>? vendor = snapshot.data;
+        body: SingleChildScrollView(
+          child: Column(
+              //       Container(
+              // height: 50,
+              // padding: EdgeInsets.fromLTRB(0, 5, 5, 0),
+              // child: RaisedButton(
+              //   textColor: Colors.white,
+              //   color: Colors.green,
+              //   child: Row(children: <Widget>[
+              //     Icon(Icons.call),
+              //     Text('Call Vendor')
+              //   ]),
+              //   onPressed: () {
+              //     launch('tel: ${vendor.phone}');
+              //   },
+              // ))
+              children: [
+                Container(
+                    height: 50,
+                    padding: EdgeInsets.fromLTRB(0, 5, 5, 0),
+                    child: RaisedButton(
+                      textColor: Colors.white,
+                      color: Colors.green,
+                      child: Row(children: <Widget>[
+                        Icon(Icons.call),
+                        Text('Call Vendor')
+                      ]),
+                      onPressed: () {
+                        //launch('tel: ${vendor.phone}');
+                      },
+                    )),
+                SingleChildScrollView(
+                  child: FutureBuilder<List<Vendor>>(
+                      future: futureData,
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          List<Vendor>? vendor = snapshot.data;
 
-                  return RefreshIndicator(
-                    onRefresh: refreshData,
-                    child: ListView.builder(
-                        itemCount: vendor?.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          if (vendor![index].isAgent) {
-                            return MomoAgent(
-                              vendor: vendor[index],
-                              clickable: true,
-                              lat: lat,
-                              lng: lng,
-                            );
-                          } else {
-                            return VendorCard(
-                              vendor: vendor[index],
-                              clickable: true,
-                              lat: lat,
-                              lng: lng,
-                            );
-                          }
-                        }),
-                  );
-                } else if (snapshot.hasError) {
-                  return Text("${snapshot.error}");
-                }
-                return CircularProgressIndicator();
-              })),
+                          return RefreshIndicator(
+                            onRefresh: refreshData,
+                            child: ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: vendor?.length,
+                                itemBuilder: (BuildContext context, int index) {
+                                  if (vendor![index].isAgent) {
+                                    return MomoAgent(
+                                      vendor: vendor[index],
+                                      clickable: true,
+                                      lat: lat,
+                                      lng: lng,
+                                    );
+                                  } else {
+                                    return VendorCard(
+                                      vendor: vendor[index],
+                                      clickable: true,
+                                      lat: lat,
+                                      lng: lng,
+                                    );
+                                  }
+                                }),
+                          );
+                        } else if (snapshot.hasError) {
+                          return Text("${snapshot.error}");
+                        }
+                        return CircularProgressIndicator();
+                      }),
+                ),
+              ]),
+        ),
+      ),
     );
   }
 }

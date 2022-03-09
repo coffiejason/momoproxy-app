@@ -26,6 +26,15 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
+void checkActiveTransaction(context) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String tid = prefs.getString('transactionid').toString();
+
+  if (tid.isEmpty != true || tid != "null" || tid != "") {
+    Navigator.pushNamed(context, "/getVendor", arguments: tid);
+  }
+}
+
 void updateToken() async {
   FirebaseMessaging firebaseMessaging = FirebaseMessaging.instance;
 
@@ -318,6 +327,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    checkActiveTransaction(context);
+
     Future<void> refreshData() {
       setState(() {
         getLocation();
@@ -507,7 +518,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text("What's you phone number?",
+                  child: Text("What is your phone number?",
                       style: TextStyle(fontSize: 17, color: Colors.grey)),
                 ),
                 SizedBox(
