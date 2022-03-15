@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:momoproxy/widgets/vendor.dart';
 import 'package:momoproxy/widgets/vendor_card.dart';
 import 'package:momoproxy/widgets/ma_card.dart';
+import 'package:momoproxy/widgets/cancel.dart';
 
 import 'package:async/async.dart';
 import 'dart:async';
@@ -129,90 +130,57 @@ class _GetVendorScreenState extends State<GetVendorScreen> {
       futureData = fetchData(tid);
     });
 
-    return WillPopScope(
-      onWillPop: () async => false,
-      child: Scaffold(
-        appBar: AppBar(
-          iconTheme: IconThemeData(color: Colors.grey),
-          title: Text(
-            "Vendors Nearby",
-            style: TextStyle(
-              color: Colors.grey,
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        iconTheme: IconThemeData(color: Colors.grey),
+        title: Text(
+          "Vendors Nearby",
+          style: TextStyle(
+            color: Colors.grey,
           ),
-          centerTitle: true,
-          shadowColor: Colors.transparent,
-          backgroundColor: Colors.transparent,
         ),
-        body: SingleChildScrollView(
-          child: Column(
-              //       Container(
-              // height: 50,
-              // padding: EdgeInsets.fromLTRB(0, 5, 5, 0),
-              // child: RaisedButton(
-              //   textColor: Colors.white,
-              //   color: Colors.green,
-              //   child: Row(children: <Widget>[
-              //     Icon(Icons.call),
-              //     Text('Call Vendor')
-              //   ]),
-              //   onPressed: () {
-              //     launch('tel: ${vendor.phone}');
-              //   },
-              // ))
-              children: [
-                Container(
-                    height: 50,
-                    padding: EdgeInsets.fromLTRB(0, 5, 5, 0),
-                    child: RaisedButton(
-                      textColor: Colors.white,
-                      color: Colors.green,
-                      child: Row(children: <Widget>[
-                        Icon(Icons.call),
-                        Text('Call Vendor')
-                      ]),
-                      onPressed: () {
-                        //launch('tel: ${vendor.phone}');
-                      },
-                    )),
-                SingleChildScrollView(
-                  child: FutureBuilder<List<Vendor>>(
-                      future: futureData,
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData) {
-                          List<Vendor>? vendor = snapshot.data;
+        centerTitle: true,
+        shadowColor: Colors.transparent,
+        backgroundColor: Colors.transparent,
+      ),
+      body: Center(
+        child: FutureBuilder<List<Vendor>>(
+            future: futureData,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                List<Vendor>? vendor = snapshot.data;
 
-                          return RefreshIndicator(
-                            onRefresh: refreshData,
-                            child: ListView.builder(
-                                shrinkWrap: true,
-                                itemCount: vendor?.length,
-                                itemBuilder: (BuildContext context, int index) {
-                                  if (vendor![index].isAgent) {
-                                    return MomoAgent(
-                                      vendor: vendor[index],
-                                      clickable: true,
-                                      lat: lat,
-                                      lng: lng,
-                                    );
-                                  } else {
-                                    return VendorCard(
-                                      vendor: vendor[index],
-                                      clickable: true,
-                                      lat: lat,
-                                      lng: lng,
-                                    );
-                                  }
-                                }),
-                          );
-                        } else if (snapshot.hasError) {
-                          return Text("${snapshot.error}");
+                return RefreshIndicator(
+                  onRefresh: refreshData,
+                  child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: vendor?.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        if (index == 0) {
+                          return CancelRequest();
                         }
-                        return CircularProgressIndicator();
+                        if (vendor![index].isAgent) {
+                          return MomoAgent(
+                            vendor: vendor[index],
+                            clickable: true,
+                            lat: lat,
+                            lng: lng,
+                          );
+                        } else {
+                          return VendorCard(
+                            vendor: vendor[index],
+                            clickable: true,
+                            lat: lat,
+                            lng: lng,
+                          );
+                        }
                       }),
-                ),
-              ]),
-        ),
+                );
+              } else if (snapshot.hasError) {
+                return Text("${snapshot.error}");
+              }
+              return CircularProgressIndicator();
+            }),
       ),
     );
   }
