@@ -16,7 +16,6 @@ import 'package:async/async.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -26,12 +25,61 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
+void checkforasssignedvendor(context) async {
+  try {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    String tid = prefs.getString("transactionid").toString();
+
+    final response = await http.get(Uri.parse(
+        'https://momoproxy.herokuapp.com/checkstatus/$tid/0000000000'));
+
+    if (response.statusCode == 200) {
+      var jsonResponse = json.decode(response.body);
+      String vid = jsonResponse["vid"].toString();
+
+      print('accepted vendor :${jsonResponse} $vid');
+
+      prefs.setString("assignedvendorid", vid);
+
+      final res = await http
+          .get(Uri.parse('https://momoproxy.herokuapp.com/vendordata/$vid'));
+
+      print("got assigned vendor 1 ${res.body}");
+
+      if (res.statusCode == 200) {
+        var jsonResponse2 = json.decode(res.body);
+        String vid = jsonResponse2["vid"].toString();
+
+        print("got assigned vendor $vid");
+
+        if (vid == "null") {
+          checkActiveTransaction(context);
+        }
+
+        Vendor2 assignedVendor = Vendor2.singlefromJson(jsonResponse2);
+
+        Navigator.pushReplacementNamed(context, '/customerprofile',
+            arguments: assignedVendor);
+      }
+    } else {
+      throw Exception('Unexpected error occurred');
+    }
+  } on Exception catch (e) {
+    throw Exception(e);
+  }
+}
+
 void checkActiveTransaction(context) async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   String tid = prefs.getString('transactionid').toString();
 
-  if (tid.isEmpty != true || tid != "null" || tid != "") {
-    Navigator.pushNamed(context, "/getVendor", arguments: tid);
+  print("Tid: ${tid}");
+  print(tid == "null");
+  print(tid == "");
+
+  if (tid != "null") {
+    Navigator.pushReplacementNamed(context, "/getVendor", arguments: tid);
   }
 }
 
@@ -283,7 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialBanner(
         //padding: EdgeInsets.all(5),
         content: Text(
-          "Open transaction . . .",
+          "Please Wait . . .",
           style: TextStyle(fontSize: 17),
         ),
         leading: Transform.scale(
@@ -292,17 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         backgroundColor: Colors.yellow,
         actions: [
-          TextButton(
-              child: const Text('Open'),
-              onPressed: () {
-                Navigator.pushNamed(context, '/getVendor');
-                ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
-              }),
-          // TextButton(
-          //   child: const Text('Dismiss'),
-          //   onPressed: () =>
-          //       ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
-          // ),
+          TextButton(child: const Text(''), onPressed: () {}),
         ],
       ),
     );
@@ -552,17 +590,27 @@ class _HomeScreenState extends State<HomeScreen> {
                                 color: Color.fromRGBO(17, 205, 239, 1.0),
                                 width: 1.0,
                                 style: BorderStyle.solid)),
-                        hintText: "0240000000")),
+                        hintText: "0540000000")),
                 SizedBox(
-                  height: 20,
+                  height: 10,
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text("you will recieve GHS XXX from the vendor",
+                      style: TextStyle(
+                          fontSize: 17,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold)),
+                ),
+                SizedBox(
+                  height: 10,
                 ),
                 MaterialButton(
                   child: setUpButtonChild(),
                   onPressed: () {
-                    showBanner(context);
-
                     if (amountController.text.isNotEmpty &&
                         phoneController.text.isNotEmpty) {
+                      showBanner(context);
                       setState(() {
                         if (_state == 0) {
                           animateButton();

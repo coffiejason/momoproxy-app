@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:momoproxy/widgets/vendor.dart';
+import 'package:momoproxy/widgets/vendor2.dart';
 import 'package:momoproxy/widgets/vendor_card.dart';
 import 'package:momoproxy/widgets/ma_card.dart';
 import 'package:momoproxy/widgets/cancel.dart';
@@ -9,6 +10,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'package:http/http.dart' as http;
 
@@ -114,10 +116,57 @@ class _GetVendorScreenState extends State<GetVendorScreen> {
     ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
   }
 
+  void checkforasssignedvendor(context) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+
+      String tid = prefs.getString("transactionid").toString();
+
+      final response = await http.get(Uri.parse(
+          'https://momoproxy.herokuapp.com/checkstatus/$tid/0000000000'));
+
+      if (response.statusCode == 200) {
+        var jsonResponse = json.decode(response.body);
+        String vid = jsonResponse["vid"].toString();
+
+        print('accepted vendor :${jsonResponse} $vid');
+
+        prefs.setString("assignedvendorid", vid);
+
+        final res = await http
+            .get(Uri.parse('https://momoproxy.herokuapp.com/vendordata/$vid'));
+
+        print("got assigned vendor 1 ${res.body}");
+
+        if (res.statusCode == 200) {
+          var jsonResponse2 = json.decode(res.body);
+          String vid = jsonResponse2["vid"].toString();
+
+          print("got assigned vendor $vid");
+
+          Vendor2 assignedVendor = Vendor2.singlefromJson(jsonResponse2);
+
+          Navigator.pushReplacementNamed(context, '/customerprofile',
+              arguments: assignedVendor);
+        }
+      } else {
+        throw Exception('Unexpected error occurred');
+      }
+    } on Exception catch (e) {
+      throw Exception(e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tid = ModalRoute.of(context)!.settings.arguments as String;
     savetransaction(true, "10", "0000000000", "Vodaphone");
+
+    checkforasssignedvendor(context);
+
+    FirebaseMessaging.onMessage.listen((data) {
+      checkforasssignedvendor(context);
+    });
 
     getLocation();
 
