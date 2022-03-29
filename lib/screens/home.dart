@@ -26,47 +26,60 @@ class HomeScreen extends StatefulWidget {
 }
 
 void checkforasssignedvendor(context) async {
-  try {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+  // try {
+  //   SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    String tid = prefs.getString("transactionid").toString();
+  //   String tid = prefs.getString("transactionid").toString();
 
-    final response = await http.get(Uri.parse(
-        'https://momoproxy.herokuapp.com/checkstatus/$tid/0000000000'));
+  //   final response = await http.get(Uri.parse(
+  //       'https://momoproxy.herokuapp.com/checkstatus/$tid/0000000000'));
 
-    if (response.statusCode == 200) {
-      var jsonResponse = json.decode(response.body);
-      String vid = jsonResponse["vid"].toString();
+  //   if (response.statusCode == 200) {
+  //     var jsonResponse = json.decode(response.body);
+  //     String vid = jsonResponse["vid"].toString();
 
-      print('accepted vendor :${jsonResponse} $vid');
+  //     print('accepted vendor :${jsonResponse} $vid');
 
-      prefs.setString("assignedvendorid", vid);
+  //     prefs.setString("assignedvendorid", vid);
 
-      final res = await http
-          .get(Uri.parse('https://momoproxy.herokuapp.com/vendordata/$vid'));
+  //     final res = await http
+  //         .get(Uri.parse('https://momoproxy.herokuapp.com/vendordata/$vid'));
 
-      print("got assigned vendor 1 ${res.body}");
+  //     print("got assigned vendor 1 ${res.body}");
 
-      if (res.statusCode == 200) {
-        var jsonResponse2 = json.decode(res.body);
-        String vid = jsonResponse2["vid"].toString();
+  //     if (res.statusCode == 200) {
+  //       var jsonResponse2 = json.decode(res.body);
+  //       String vid = jsonResponse2["vid"].toString();
 
-        print("got assigned vendor $vid");
+  //       print("got assigned vendor $vid");
 
-        if (vid == "null") {
-          checkActiveTransaction(context);
-        }
+  //       if (vid == "null") {
+  //         checkActiveTransaction(context);
+  //       }
 
-        Vendor2 assignedVendor = Vendor2.singlefromJson(jsonResponse2);
+  //       Vendor2 assignedVendor = Vendor2.singlefromJson(jsonResponse2);
 
-        Navigator.pushReplacementNamed(context, '/customerprofile',
-            arguments: assignedVendor);
-      }
-    } else {
-      throw Exception('Unexpected error occurred');
-    }
-  } on Exception catch (e) {
-    throw Exception(e);
+  //       Navigator.pushReplacementNamed(context, '/customerprofile',
+  //           arguments: assignedVendor);
+  //     }
+  //   } else {
+  //     throw Exception('Unexpected error occurred');
+  //   }
+  // } on Exception catch (e) {
+  //   throw Exception(e);
+  // }
+
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  String asvObj = prefs.getString("asvObj") as String;
+
+  if (asvObj == "null" || asvObj == "") {
+    checkActiveTransaction(context);
+  } else {
+    Vendor2 assignedVendor = Vendor2.singlefromJson(jsonDecode(asvObj));
+
+    Navigator.pushReplacementNamed(context, '/vendorpage',
+        arguments: assignedVendor);
   }
 }
 
@@ -249,6 +262,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Map<String, dynamic> res = json.decode(response.body);
       String tid = res['id'];
       prefs.setString("transactionid", tid);
+      _buttonDisabled = false;
 
       Navigator.pushNamed(context, "/getVendor", arguments: tid);
     } else {
@@ -363,9 +377,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  bool _buttonDisabled = false;
+
   @override
   Widget build(BuildContext context) {
     checkActiveTransaction(context);
+
+    //_buttonDisabled = false;
 
     Future<void> refreshData() {
       setState(() {
@@ -379,19 +397,19 @@ class _HomeScreenState extends State<HomeScreen> {
       futureData = fetchData();
     });
 
-    FirebaseMessaging.onMessage.listen((data) {
-      //checkNotifications(context);
-      Fluttertoast.showToast(
-          msg: "found you an e-vendor",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.CENTER,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.green[500],
-          textColor: Colors.white,
-          fontSize: 16.0);
+    // FirebaseMessaging.onMessage.listen((data) {
+    //   //checkNotifications(context);
+    //   Fluttertoast.showToast(
+    //       msg: "found you an e-vendor",
+    //       toastLength: Toast.LENGTH_SHORT,
+    //       gravity: ToastGravity.CENTER,
+    //       timeInSecForIosWeb: 1,
+    //       backgroundColor: Colors.green[500],
+    //       textColor: Colors.white,
+    //       fontSize: 16.0);
 
-      getAssignedVendor(context);
-    });
+    //   getAssignedVendor(context);
+    // });
 
     //hasPending(context);
     loadProfile();
@@ -609,13 +627,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: setUpButtonChild(),
                   onPressed: () {
                     if (amountController.text.isNotEmpty &&
-                        phoneController.text.isNotEmpty) {
+                        phoneController.text.isNotEmpty &&
+                        (_buttonDisabled == false)) {
                       showBanner(context);
                       setState(() {
                         if (_state == 0) {
                           animateButton();
+                          _buttonDisabled = true;
                         }
                       });
+
                       // savetransaction(true, amountController.text,
                       //     phoneController.text, "Vodaphone");
 

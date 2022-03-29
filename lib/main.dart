@@ -3,17 +3,120 @@ import 'package:momoproxy/screens/login.dart';
 import 'package:momoproxy/screens/home.dart';
 import 'package:momoproxy/screens/getvendor.dart';
 import 'package:momoproxy/screens/customer_profile.dart';
+import 'package:momoproxy/screens/vendorpage.dart';
 import 'package:momoproxy/screens/onboard.dart';
 import 'package:momoproxy/screens/intro.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+final GlobalKey<NavigatorState> navigatorKey =
+    GlobalKey(debugLabel: "Main Navigator");
+
+void checkASV() {}
+
+late String routeToGo = '/home';
+late String transactionID = '';
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+String? payload;
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print("_firebaseMessagingBackgroundHandler Clicked! ${message.data["vid"]}");
+  _handleMessage(message);
+}
+
+const AndroidNotificationChannel channel = AndroidNotificationChannel(
+  'high_importance_channel', // id
+  'High Importance Notifications', // titletion
+  importance: Importance.high,
+);
+
+Future<void> selectNotification(String? payload) async {
+  if (payload != null) {
+    debugPrint('notification payload: $payload');
+    print(payload);
+    print(" message recieved now run checkASV");
+    navigatorKey.currentState?.pushNamed('/home', arguments: payload);
+    //navigatorKey.onGenerateRout
+  }
+}
+
+void _handleMessage(RemoteMessage message) {
+  // if (message.data["type"] == 'asv') {
+  //   // navigatorKey.currentState
+  //   //     ?.pushNamed('/loadscreen', arguments: "${message.data["vid"]}");
+
+  // }
+  navigatorKey.currentState?.pushNamed('/intro');
+}
+
+Future<void> setupInteractedMessage() async {
+  RemoteMessage? initialMessage =
+      await FirebaseMessaging.instance.getInitialMessage();
+
+  if (initialMessage != null) {
+    _handleMessage(initialMessage);
+  }
+
+  FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  //initialize background
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  setupInteractedMessage();
+
+  // // assign channel (required after android 8)
+  // await flutterLocalNotificationsPlugin
+  //     .resolvePlatformSpecificImplementation<
+  //         AndroidFlutterLocalNotificationsPlugin>()
+  //     ?.createNotificationChannel(channel);
+
+  // // initialize notification for android
+  // var initialzationSettingsAndroid =
+  //     AndroidInitializationSettings('@mipmap/launcher_icon');
+  // var initializationSettings =
+  //     InitializationSettings(android: initialzationSettingsAndroid);
+  // flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+  // final NotificationAppLaunchDetails? notificationAppLaunchDetails =
+  //     await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+
+  // print('payload=');
+  // payload = notificationAppLaunchDetails!.payload;
+  // if (payload != null) {
+  //   print(payload);
+
+  //   print(" message recieved now run checkASV");
+  //   routeToGo = '/home';
+  //   navigatorKey.currentState?.pushNamed('/home', arguments: "2");
+  // }
+
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
+    print(message.notification!.body != null);
+    if (message.notification!.body != null) {
+      payload = "${message.data["tid"]}";
+      print(payload);
+
+      print(" message recieved now run checkASV");
+      navigatorKey.currentState
+          ?.pushNamed('/loadscreen', arguments: "${message.data["tid"]}");
+    }
+  });
+
+  // await flutterLocalNotificationsPlugin.initialize(initializationSettings,
+  //     onSelectNotification: selectNotification);
   runApp(const MyApp());
 }
 
@@ -30,6 +133,7 @@ class MyApp extends StatelessWidget {
         ),
         initialRoute: "/intro",
         debugShowCheckedModeBanner: false,
+        navigatorKey: navigatorKey,
         routes: <String, WidgetBuilder>{
           "/login": (BuildContext context) => new LoginPage(),
           "/home": (BuildContext context) => new HomeScreen(),
@@ -37,6 +141,58 @@ class MyApp extends StatelessWidget {
           "/intro": (BuildContext context) => new IntroScreen(),
           "/getVendor": (BuildContext context) => new GetVendorScreen(),
           "/customerprofile": (BuildContext context) => new VendorProfile(),
+          "/vendorpage": (BuildContext context) => new VendorPage(),
+        },
+        onGenerateRoute: (RouteSettings settings) {
+          switch (settings.name) {
+            case '/login':
+              return MaterialPageRoute(
+                builder: (_) => LoginPage(),
+              );
+              break;
+            case '/home':
+              return MaterialPageRoute(
+                builder: (_) => OnboardScreen(),
+              );
+              break;
+            case '/intro':
+              return MaterialPageRoute(
+                builder: (_) => IntroScreen(),
+              );
+              break;
+            case '/getVendor':
+              return MaterialPageRoute(
+                builder: (_) => GetVendorScreen(),
+              );
+              break;
+            case '/customerprofile':
+              return MaterialPageRoute(
+                builder: (_) => VendorProfile(),
+              );
+              break;
+            case '/vendorpage':
+              return MaterialPageRoute(
+                builder: (_) => VendorPage(),
+              );
+              break;
+            case '/onboard':
+              return MaterialPageRoute(
+                builder: (_) => OnboardScreen(),
+              );
+              break;
+            // case '/transaction':
+            //   return MaterialPageRoute(
+            //     builder: (_) => TransactionPage(),
+            //   );
+            //   break;
+            // case '/customerprofile':
+            //   return MaterialPageRoute(
+            //     builder: (_) => CustomerProfile(),
+            //   );
+            //   break;
+            default:
+            //return _errorRoute();
+          }
         });
   }
 }

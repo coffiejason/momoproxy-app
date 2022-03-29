@@ -146,7 +146,11 @@ class _GetVendorScreenState extends State<GetVendorScreen> {
 
           Vendor2 assignedVendor = Vendor2.singlefromJson(jsonResponse2);
 
-          Navigator.pushReplacementNamed(context, '/customerprofile',
+          //Map<String, dynamic> asvObj = assignedVendor as Map<String, dynamic>;
+
+          bool result = await prefs.setString("asvObj", res.body);
+
+          Navigator.pushReplacementNamed(context, '/vendorpage',
               arguments: assignedVendor);
         }
       } else {
