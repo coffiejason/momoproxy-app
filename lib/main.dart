@@ -152,7 +152,7 @@ class MyApp extends StatelessWidget {
               break;
             case '/home':
               return MaterialPageRoute(
-                builder: (_) => OnboardScreen(),
+                builder: (_) => HomeScreen(),
               );
               break;
             case '/intro':
@@ -191,7 +191,10 @@ class MyApp extends StatelessWidget {
             //   );
             //   break;
             default:
-            //return _errorRoute();
+              return MaterialPageRoute(
+                builder: (_) => HomeScreen(),
+              );
+              break;
           }
         });
   }
